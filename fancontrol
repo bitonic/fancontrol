@@ -5,6 +5,7 @@
 
 # 2 minutes
 set interval 12000
+set pidfile "/var/run/fancontrol.pid"
 
 proc gettemp {} {
     set tempsens "/proc/acpi/ibm/thermal"
@@ -12,7 +13,7 @@ proc gettemp {} {
 }
 
 proc controlfan {temp} {
-    set threshold 10
+    set threshold 75
     set fansens "/proc/acpi/ibm/fan"
 
     if {$temp < $threshold} {
@@ -22,8 +23,24 @@ proc controlfan {temp} {
     }
 }
 
+
+# If started as a daemon, fork to background
+if {$argc > 0 && [lindex $argv 0] == "--daemon"} {
+    if {[expr {![file exists $pidfile]}] || [expr {[file size $pidfile] == 0}]} {
+        set pid [exec $argv0 >/dev/null &]
+
+        exec echo $pid > $pidfile
+
+        exit 0
+    } else {
+        puts "fancontrol is already running in daemon mode."
+
+        exit 1
+    }
+}
+
 while {1} {
     controlfan [gettemp]
-
+    
     after $interval
 }
