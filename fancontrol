@@ -5,24 +5,10 @@
 
 # 2 minutes
 set interval 12000
+set threshold 75
+set fansens "/proc/acpi/ibm/fan"
+set tempsens "/proc/acpi/ibm/thermal"
 set pidfile "/var/run/fancontrol.pid"
-
-proc gettemp {} {
-    set tempsens "/proc/acpi/ibm/thermal"
-    return [lindex [split [exec cat $tempsens]] 1]
-}
-
-proc controlfan {temp} {
-    set threshold 75
-    set fansens "/proc/acpi/ibm/fan"
-
-    if {$temp < $threshold} {
-        exec echo level auto > $fansens
-    } else {
-        exec echo level full-speed > $fansens
-    }
-}
-
 
 # If started as a daemon, fork to background
 if {$argc > 0 && [lindex $argv 0] == "--daemon"} {
@@ -39,8 +25,29 @@ if {$argc > 0 && [lindex $argv 0] == "--daemon"} {
     }
 }
 
+# Resets the level at the beginning
+exec echo level auto > $fansens
+
+set fullspeed 0
+
 while {1} {
-    controlfan [gettemp]
+    # Get the temperature
+    set temp [lindex [split [exec cat $tempsens]] 1]
+
+    # Set the temperature
+    set lthreshold $threshold
+    if {$fullspeed} {
+        set lthreshold [expr {$threshold - 10}]
+    }
     
+    if {$temp < $lthreshold} {
+        exec echo level auto > $fansens
+        set fullspeed 0
+    } else {
+        exec echo level full-speed > $fansens
+        set fullspeed 1
+    }
+
+    # Wait
     after $interval
 }
