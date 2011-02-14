@@ -26,7 +26,7 @@ proc controlfan {temp} {
 
 # If started as a daemon, fork to background
 if {$argc > 0 && [lindex $argv 0] == "--daemon"} {
-    if {[expr {![file exists $pidfile]}] || [expr {[file size $pidfile] == 0}]} {
+    if {![file exists $pidfile]} {
         set pid [exec $argv0 >/dev/null &]
 
         exec echo $pid > $pidfile
